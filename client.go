@@ -38,7 +38,6 @@ func clientFunc(finishChan chan bool, clientID int) {
 		case <-timeout:
 			finishChan <- true
 			logger.Info("Timeout reached!")
-			//timeout
 			return
 		case <-tick:
 			clientIDStr := strconv.Itoa(clientID)

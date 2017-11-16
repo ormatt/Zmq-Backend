@@ -16,8 +16,8 @@ func handleReq(req string) string {
 	return resp
 }
 
-func workerFunc() {
-	logger := getNewLogger("Worker")
+func workerFunc(workerID int) {
+	logger := getNewLogger(fmt.Sprintf("Worker%d", workerID))
 	worker, _ := zmq.NewSocket(zmq.REQ)
 	defer worker.Close()
 	worker.Connect(fmt.Sprintf("%s://%s:%s", proto, backendHost, backendPort))

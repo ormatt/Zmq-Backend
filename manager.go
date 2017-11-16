@@ -27,11 +27,11 @@ func main() {
 	logger := getNewLogger("Manager")
 	finishChan := make(chan bool, clientPoolSize)
 
-	for clientNumber := 0; clientNumber < clientPoolSize; clientNumber++ {
-		go clientFunc(finishChan, clientNumber)
+	for clientID := 0; clientID < clientPoolSize; clientID++ {
+		go clientFunc(finishChan, clientID)
 	}
-	for workerNbr := 0; workerNbr < workerPoolSize; workerNbr++ {
-		go workerFunc()
+	for workerID := 0; workerID < workerPoolSize; workerID++ {
+		go workerFunc(workerID)
 	}
 
 	go brokerFunc()
