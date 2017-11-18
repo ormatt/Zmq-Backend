@@ -24,28 +24,28 @@ var (
 )
 
 
-func clientFunc(finishChan chan bool, clientID int) {
+func clientFunc(finishChan chan bool, clientNum int) {
 	logger := getNewLogger("Client")
 	timeout := time.After(timeoutSeconds)
 	tick := time.Tick(tickSeconds)
 
 	client, _ := zmq.NewSocket(zmq.REQ)
 	defer client.Close()
-	client.Connect(fmt.Sprintf("%s://%s:%s", proto, frontendHost, frontendPort))
+	client.Connect(fmt.Sprintf("%s://%s:%s", Proto, FrontendHost, FrontendPort))
 
 	for {
 		select {
 		case <-timeout:
 			finishChan <- true
-			logger.Info("Timeout reached!")
+			//logger.Info("Timeout reached!")
 			return
 		case <-tick:
-			clientIDStr := strconv.Itoa(clientID)
-			client.Send(clientIDStr, 0)
+			req := strconv.Itoa(clientNum) + "hello"
+			client.Send(req, 0)
 
-			//fmt.Println("[client_task] SEND: ", clientIDStr)
-			reply, _ := client.Recv(0)
-			logger.Info("RECV: ", reply)
+			//fmt.Println("[client_task] SEND: ", msg)
+			resp, _ := client.Recv(0)
+			logger.Info("RECV: ", resp)
 		}
 	}
 }

@@ -16,15 +16,18 @@ func handleReq(req string) string {
 	return resp
 }
 
-func workerFunc(workerID int) {
-	logger := getNewLogger(fmt.Sprintf("Worker%d", workerID))
+func workerFunc(workerNumber int) {
+	logger := getNewLogger(fmt.Sprintf("Worker%d", workerNumber))
 	worker, _ := zmq.NewSocket(zmq.REQ)
 	defer worker.Close()
-	worker.Connect(fmt.Sprintf("%s://%s:%s", proto, backendHost, backendPort))
+	worker.Connect(fmt.Sprintf("%s://%s:%s", Proto, BackendHost, BackendPort))
+	worker.Send("READY", 0)
 
 	for {
 		identity, _ := worker.Recv(0)
-		worker.Recv(0)	// Receive an empty frame
+		if empty, _ := worker.Recv(0); empty != ""{	//  Second frame is empty
+			reportError(fmt.Sprintf("Empty frame is not empty: %q", empty), logger)
+		}
 		req, _ := worker.Recv(0)
 		logger.Info("RECV: ", req)
 

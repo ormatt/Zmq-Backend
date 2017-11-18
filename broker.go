@@ -11,32 +11,30 @@ func brokerFunc(){
 
 	frontend, _ := zmq.NewSocket(zmq.ROUTER)
 	defer frontend.Close()
-	frontend.Bind(fmt.Sprintf("%s://%s:%s", proto, frontendHost, frontendPort))
-	logger.Info("[fronted] binded")
+	frontend.Bind(fmt.Sprintf("%s://%s:%s", Proto, FrontendHost, FrontendPort))
+	logger.Info("Frontend Binded")
 
 	backend, _ := zmq.NewSocket(zmq.ROUTER)
 	defer backend.Close()
-	backend.Bind(fmt.Sprintf("%s://%s:%s", proto, backendHost, backendPort))
-	logger.Info("[backend] binded")
+	backend.Bind(fmt.Sprintf("%s://%s:%s", Proto, BackendHost, BackendPort))
+	logger.Info("Backend binded")
 
-	workerQueue := make([]string, 0, workerPoolSize)
+	workerQueue := make([]string, 0, WorkerPoolSize)
 
-	poller1 := zmq.NewPoller()
-	poller1.Add(backend, zmq.POLLIN)
+	pollerBackend := zmq.NewPoller()
+	pollerBackend.Add(backend, zmq.POLLIN)
 
-	poller2 := zmq.NewPoller()
-	poller2.Add(backend, zmq.POLLIN)
-	poller2.Add(frontend, zmq.POLLIN)
+	pollerBoth := zmq.NewPoller()
+	pollerBoth.Add(backend, zmq.POLLIN)
+	pollerBoth.Add(frontend, zmq.POLLIN)
 
 	for {
 		//  Poll frontend only if we have available workers
 		var sockets []zmq.Polled
 		if len(workerQueue) > 0 {
-			sockets, _ = poller2.Poll(-1)
-			//logger.Info("1 Worker queue=", len(workerQueue))
+			sockets, _ = pollerBoth.Poll(-1)
 		} else {
-			sockets, _ = poller1.Poll(-1)
-			//logger.Info("2 Worker queue=", len(workerQueue))
+			sockets, _ = pollerBackend.Poll(-1)
 		}
 
 		for _, socket := range sockets {
@@ -45,20 +43,15 @@ func brokerFunc(){
 			case backend:
 				//  Queue worker identity for load-balancing
 				workerID, _ := backend.Recv(0)
-				if !(len(workerQueue) < workerPoolSize) {
-					panic("!(len(workerQueue) < NBR_WORKERS)")
-				}
 				workerQueue = append(workerQueue, workerID)
+				if empty, _ := backend.Recv(0); empty != ""{	
+					reportError(fmt.Sprintf("Empty frame is not empty: %q", empty), logger)
+				}
 
-				backend.Recv(0)	//  Second frame is empty
 				//  Third frame is READY or else a client reply identity
-				clientID, _ := backend.Recv(0)
-
-				//  If client reply, send rest back to frontend
-				if clientID != "READY" {
-					empty, _ := backend.Recv(0)
-					if empty != "" {
-						panic(fmt.Sprintf("empty is not \"\": %q", empty))
+				if clientID, _ := backend.Recv(0); clientID != "READY" {
+					if empty, _ := backend.Recv(0); empty != "" {
+						reportError(fmt.Sprintf("Empty frame is not empty: %q", empty), logger)
 					}
 					reply, _ := backend.Recv(0)
 					frontend.Send(clientID, zmq.SNDMORE)
@@ -66,19 +59,23 @@ func brokerFunc(){
 					frontend.Send(reply, 0)
 				}
 
-			// handle a client request
+			// handle a client req
 			case frontend:
-				//  Now get next client request, route to last-used worker
-				//  Client request is [identity][empty][request]
+				//  Now get next client req, route to last-used worker
+				//  Client req is [identity][empty][req]
 				clientID, _ := frontend.Recv(0)
-				frontend.Recv(0)	//Recv empty
-				request, _ := frontend.Recv(0)
+				if empty, _ := frontend.Recv(0); empty != "" {
+					reportError(fmt.Sprintf("Empty frame is not empty: %q", empty), logger)
+				}
+				req, _ := frontend.Recv(0)
+				logger.Info("RECV: ", req)
+
 
 				backend.Send(workerQueue[0], zmq.SNDMORE)
 				backend.Send("", zmq.SNDMORE)
 				backend.Send(clientID, zmq.SNDMORE)
 				backend.Send("", zmq.SNDMORE)
-				backend.Send(request, 0)
+				backend.Send(req, 0)
 
 				//  Dequeue and drop the next worker identity
 				workerQueue = workerQueue[1:]

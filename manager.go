@@ -1,42 +1,20 @@
 package main
 
-import (
-	//"time"
-	"log"
-)
-
-const (
-	clientPoolSize = 10
-	workerPoolSize = 5
-	proto          = "tcp"
-	frontendHost   = "127.0.0.1"
-	frontendPort   = "5580"
-	backendHost    = "127.0.0.1"
-	backendPort    = "5581"
-
-)
-
-func handleError(err error){
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
 
 func main() {
 	logger := getNewLogger("Manager")
-	finishChan := make(chan bool, clientPoolSize)
+	finishChan := make(chan bool, ClientPoolSize)
 
-	for clientID := 0; clientID < clientPoolSize; clientID++ {
-		go clientFunc(finishChan, clientID)
+	for clientNum := 0; clientNum < ClientPoolSize; clientNum++ {
+		go clientFunc(finishChan, clientNum)
 	}
-	for workerID := 0; workerID < workerPoolSize; workerID++ {
-		go workerFunc(workerID)
+	for workerNum := 0; workerNum < WorkerPoolSize; workerNum++ {
+		go workerFunc(workerNum)
 	}
 
 	go brokerFunc()
 
-	clientsLeft := clientPoolSize
+	clientsLeft := ClientPoolSize
 	for {
 		select {
 		case <-finishChan:
