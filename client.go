@@ -1,28 +1,17 @@
 package main
 
-//go:generate msgp
 
 import (
+	"fmt"
 	"time"
 	"strconv"
-	//"github.com/tinylib/msgp/msgp"
 	zmq "github.com/pebbe/zmq4"
-	//log "github.com/sirupsen/logrus"
-	"fmt"
 )
-
-
-//type genericMsg struct {
-//	Uuid string  `msg:"uuid"`
-//	Data string  `msg:"data"`
-//	TS float64 `msg:"timestamp"`
-//}
 
 var (
 	timeoutSeconds = 1000 * time.Millisecond
 	tickSeconds = 500 * time.Millisecond
 )
-
 
 func clientFunc(finishChan chan bool, clientNum int) {
 	logger := getNewLogger("Client")
